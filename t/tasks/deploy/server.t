@@ -35,12 +35,14 @@ my $last;
 my %files;
 my %filePathByFilename;
 
+my $root_dir = "$FindBin::Bin/../../..";
+
 # Generate a tarball
 my $tar = Archive::Tar->new();
 $tar->add_files(
-    $FindBin::Bin . "/../Makefile.PL",
-    $FindBin::Bin . "/../META.yml",
-    $FindBin::Bin . "/../lib/FusionInventory/Agent/Task/Deploy.pm"
+    "$root_dir/Makefile.PL",
+    "$root_dir/META.yml",
+    "$root_dir/lib/FusionInventory/Agent/Task/Deploy.pm"
 );
 $tar->add_data( 'toto',   'bababa' );
 $tar->add_data( 'titit',  'bibibi' );
@@ -232,7 +234,7 @@ my %actions = (
                   }
               ],
 
-                  exec => "$EXECUTABLE_NAME -pe \"\" " . $FindBin::Bin . "/../META.yml",
+                  exec => "$EXECUTABLE_NAME -pe \"\" $root_dir/META.yml",
                   logLineLimit => 10
               }
           };
@@ -268,7 +270,7 @@ my %actions = (
               cmd => {
                   checks => [
                   {
-                      path => $FindBin::Bin . "/../lib/FusionInventory/Agent/Task/Deploy.pm",
+                      path => "$root_dir/lib/FusionInventory/Agent/Task/Deploy.pm",
                       type => "fileExists",
                       return => "ignore"
                   }
@@ -288,14 +290,14 @@ my %actions = (
               cmd => {
                   checks => [
                   {
-                      path => $FindBin::Bin . "/../lib/FusionInventory/Agent/Task/Deploy.pm-missing",
+                      path => "$root_dir/lib/FusionInventory/Agent/Task/Deploy.pm-missing",
                       type => "fileExists",
                       return => "ignore"
                   }
                   ],
                   copy => [
-                      $FindBin::Bin . "/../lib/FusionInventory/Agent/Task/Deploy.pm",
-                      $FindBin::Bin . "/../lib/FusionInventory/Agent/Task/Deploy.pm-shouldnotbethere"
+                      "$root_dir/lib/FusionInventory/Agent/Task/Deploy.pm",
+                      "$root_dir/lib/FusionInventory/Agent/Task/Deploy.pm-shouldnotbethere"
                       ]
               }
           };
@@ -305,7 +307,7 @@ my %actions = (
               cmd => {
                   checks => [
                   {
-                      path => $FindBin::Bin . "/../lib/FusionInventory/Agent/Task/Deploy.pm-missing",
+                      path => "$root_dir/lib/FusionInventory/Agent/Task/Deploy.pm-missing",
                       type => "fileExists",
                       return => "ignore"
                   }
@@ -323,15 +325,15 @@ my %actions = (
     elsif ( $testname eq 'deploy9' ) {
           $ret->{jobs}[0]{actions}[0] = {
               copy => {
-                  from =>  $FindBin::Bin . "/../lib/FusionInventory/Agent/Task/Deploy.pm",
-                  to =>  $tmpDirServer
+                  from => "$root_dir/lib/FusionInventory/Agent/Task/Deploy.pm",
+                  to =>   $tmpDirServer
               }
           };
         }
     elsif ( $testname eq 'deploy10' ) {
           $ret->{jobs}[0]{actions}[0] = {
               copy => {
-                  from => $FindBin::Bin . "/../lib/FusionInventory/Agent/Task/*",
+                  from => "$root_dir/lib/FusionInventory/Agent/Task/*",
                   to => $tmpDirServer
               }
           };
@@ -533,7 +535,7 @@ $last = pop @{$deploy->{client}{msgStack}};
 ok($last->{status} eq "ok", "true ignore + action, unimplemented");
 $last = pop @{$deploy->{client}{msgStack}};
 ok($last->{status} eq "ignore", "action has been ignored");
-ok(!-f $FindBin::Bin . "/../lib/FusionInventory/Agent/Task/Deploy.pm-shouldnotbethere", "action really ignored");
+ok(!-f "$root_dir/lib/FusionInventory/Agent/Task/Deploy.pm-shouldnotbethere", "action really ignored");
 $deploy->{client}{msgStack} = [];
 #}
 
