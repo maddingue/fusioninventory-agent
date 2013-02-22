@@ -1,22 +1,35 @@
 #!/usr/bin/perl
 
-my $tmpDirClient = $FindBin::Bin . "/../tmp/deploy-test/client";
-my $tmpDirServer = $FindBin::Bin . "/../tmp/deploy-test/server";
-
-package My::WebServer;
-use base qw/Test::HTTP::Server::Simple HTTP::Server::Simple::CGI/;
 use strict;
 use warnings;
+use lib 't/lib';
 
-use JSON;
-use Data::Dumper;
-use Digest::SHA;
-use File::Basename;
-use FindBin;
-use File::Path qw(make_path remove_tree);
 use Archive::Tar;
 use Compress::Zlib;
-use English '-no_match_vars';
+use Digest::SHA;
+use English qw(-no_match_vars);
+use FindBin;
+use File::Basename;
+use File::Path qw(make_path remove_tree);
+use Test::More;
+use Data::Dumper;
+
+use FusionInventory::Agent::HTTP::Client::OCS;
+use FusionInventory::Agent::Target::Server;
+use FusionInventory::Agent::Task::Deploy;
+use FusionInventory::Test::AnotherServer;
+use FusionInventory::Test::Utils;
+
+my $port = 8080;
+
+if (!test_port($port)) {
+    plan skip_all => "port $port unavailable";
+} else {
+    plan tests => 26;
+}
+
+our $tmpDirClient = $FindBin::Bin . "/../tmp/deploy-test/client";
+our $tmpDirServer = $FindBin::Bin . "/../tmp/deploy-test/server";
 
 remove_tree($tmpDirServer) if -d $tmpDirServer;
 make_path($tmpDirServer);
@@ -407,48 +420,8 @@ my %actions = (
 
 );
 
-sub handle_request {
-    my $self = shift;
-    my $cgi  = shift;
-
-    my $testname = $cgi->path_info();
-    $testname =~ s#\/##;
-
-    if (   !$actions{ $cgi->param("action") }
-        || !defined( $actions{ $cgi->param("action") } ) )
-    {
-        print "Invalid action\n";
-        return;
-    }
-    my ( $content, $code ) = &{ $actions{ $cgi->param("action") } }($cgi, $testname);
-    print "HTTP/1.0 $code OK\r\n";
-    print "Content-Type: application/json\r\nContent-Length: ";
-    print length($content), "\r\n\r\n", $content;
-}
-
-package main;
-
-use strict;
-use warnings;
-
-use FusionInventory::Agent::HTTP::Client::OCS;
-use FusionInventory::Agent::Target::Server;
-use FusionInventory::Agent::Task::Deploy;
-use FindBin;
-use File::Path qw(make_path remove_tree);
-use Test::More;
-use Data::Dumper;
-
-plan tests => 26;
-
 remove_tree($tmpDirClient) if -d $tmpDirClient;
 make_path($tmpDirClient);
-
-my $port = 8080;
-my $s    = My::WebServer->new();
-$s->setup( port => $port );
-
-my $url_root = $s->started_ok("start up my web server");
 
 my $target = FusionInventory::Agent::Target::Server->new(
     url        => "http://localhost:$port/",
@@ -468,122 +441,18 @@ $deploy->{client} = FusionInventory::Agent::HTTP::Client::Fusion->new(
 );
 ok( $deploy->{client}, "loading Client object" );
 
+my $server = FusionInventory::Test::AnotherServer->new(
+    port => $port
+);
 
+eval {
+    $server->background();
+};
+BAIL_OUT("can't launch the server: $EVAL_ERROR") if $EVAL_ERROR;
 
 my $ret;
-#ok( $deploy->processRemote('http://localhost:8080/deploy1'), "processRemote()" );
-
-# $ret =
-#[
-#          {
-#            'action' => 'getJobs',
-#            'machineid' => 'fakeid'
-#          },
-#          {
-#            'currentStep' => 'checking',
-#            'action' => 'setStatus',
-#            'part' => 'job',
-#            'machineid' => 'fakeid',
-#            'uuid' => '0fae2958-24d5-0651-c49c-d1fec1766af650'
-#          },
-#          {
-#            'currentStep' => 'downloading',
-#            'action' => 'setStatus',
-#            'part' => 'job',
-#            'machineid' => 'fakeid',
-#            'uuid' => '0fae2958-24d5-0651-c49c-d1fec1766af650'
-#          },
-#          {
-#            'sha512' => '2a3f70d6e9c8720ab854190838fb8739f5a23d34023d28255f3e4b673e7c987421c5bc93160b5446111b7fdf5c2ca1bbd455d8d24e1683eedee7050d151e2526',
-#            'currentStep' => 'downloading',
-#            'action' => 'setStatus',
-#            'part' => 'file',
-#            'machineid' => 'fakeid',
-#            'uuid' => '0fae2958-24d5-0651-c49c-d1fec1766af650'
-#          },
-#          {
-#            'sha512' => '2a3f70d6e9c8720ab854190838fb8739f5a23d34023d28255f3e4b673e7c987421c5bc93160b5446111b7fdf5c2ca1bbd455d8d24e1683eedee7050d151e2526',
-#            'currentStep' => 'downloading',
-#            'status' => 'ok',
-#            'action' => 'setStatus',
-#            'part' => 'file',
-#            'machineid' => 'fakeid',
-#            'uuid' => '0fae2958-24d5-0651-c49c-d1fec1766af650'
-#          },
-#          {
-#            'currentStep' => 'downloading',
-#            'status' => 'ok',
-#            'action' => 'setStatus',
-#            'part' => 'job',
-#            'machineid' => 'fakeid',
-#            'uuid' => '0fae2958-24d5-0651-c49c-d1fec1766af650'
-#          },
-#          {
-#            'status' => 'ok',
-#            'action' => 'setStatus',
-#            'part' => 'job',
-#            'machineid' => 'fakeid',
-#            'uuid' => '0fae2958-24d5-0651-c49c-d1fec1766af650'
-#          }
-#        ];
-#use Data::Dumper;
-#print Dumper($ret);
-#foreach(0..@$ret) {
-## We ignore uuid since we don't know it.
-#    $ret->[$_]{sha512} = $deploy->{client}{msgStack}[$_]{sha512} = 'ignore';
-#    is_deeply($ret->[$_], $deploy->{client}{msgStack}[$_]);
-#}
 
 $deploy->{client}{msgStack} = [];
-
-
-#ok( $deploy->processRemote('http://localhost:8080/deploy1.1'), "processRemote()" );
-
-#$ret = [
-#          {
-#            'action' => 'getJobs',
-#            'machineid' => 'fakeid'
-#          },
-#          {
-#            'currentStep' => 'checking',
-#            'part' => 'job',
-#            'action' => 'setStatus',
-#            'machineid' => 'fakeid',
-#            'uuid' => '0fae2958-24d5-0651-c49c-d1fec1766af650'
-#          },
-#          {
-#            'currentStep' => 'downloading',
-#            'part' => 'job',
-#            'action' => 'setStatus',
-#            'machineid' => 'fakeid',
-#            'uuid' => '0fae2958-24d5-0651-c49c-d1fec1766af650'
-#          },
-#          {
-#            'sha512' => 'dee62337e981d7c859e6bb7d65ddd30530721b29687d3a85dafb9bb1850a7c2a4e13193bf8bf9e2d2dc4b8fbb679c74a0262479e8acf907f64bfea96ebaf20a1',
-#            'currentStep' => 'downloading',
-#            'part' => 'file',
-#            'action' => 'setStatus',
-#            'machineid' => 'fakeid',
-#            'uuid' => '0fae2958-24d5-0651-c49c-d1fec1766af650'
-#          },
-#          {
-#            'msg' => 'download failed',
-#            'sha512' => 'dee62337e981d7c859e6bb7d65ddd30530721b29687d3a85dafb9bb1850a7c2a4e13193bf8bf9e2d2dc4b8fbb679c74a0262479e8acf907f64bfea96ebaf20a1',
-#            'status' => 'ko',
-#            'currentStep' => 'downloading',
-#            'part' => 'file',
-#            'action' => 'setStatus',
-#            'machineid' => 'fakeid',
-#            'uuid' => '0fae2958-24d5-0651-c49c-d1fec1766af650'
-#          }
-#        ];
-#
-#foreach(0..@$ret) {
-## We ignore uuid since we don't know it.
-#    $ret->[$_]{sha512} = $deploy->{client}{msgStack}[$_]{sha512} = 'ignore';
-#    is_deeply($ret->[$_], $deploy->{client}{msgStack}[$_]);
-#}
-
 $deploy->{client}{msgStack} = [];
 
 # Invalid getJobs answer
