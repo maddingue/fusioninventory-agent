@@ -36,7 +36,7 @@ my %files;
 my %filePathByFilename;
 
 # Generate a tarball
-my $tar = Archive::Tar->new;
+my $tar = Archive::Tar->new();
 $tar->add_files(
     $FindBin::Bin . "/../Makefile.PL",
     $FindBin::Bin . "/../META.yml",
