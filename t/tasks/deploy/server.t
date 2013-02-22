@@ -10,7 +10,7 @@ use Digest::SHA;
 use English qw(-no_match_vars);
 use FindBin;
 use File::Basename;
-use File::Path qw(make_path remove_tree);
+use File::Temp;
 use Test::More;
 use Data::Dumper;
 
@@ -28,11 +28,8 @@ if (!test_port($port)) {
     plan tests => 26;
 }
 
-our $tmpDirClient = $FindBin::Bin . "/../tmp/deploy-test/client";
-our $tmpDirServer = $FindBin::Bin . "/../tmp/deploy-test/server";
-
-remove_tree($tmpDirServer) if -d $tmpDirServer;
-make_path($tmpDirServer);
+my $tmpDirClient = File::Temp->newdir(CLEANUP => 1);
+my $tmpDirServer = File::Temp->newdir(CLEANUP => 1);
 
 my $last;
 my %files;
@@ -419,9 +416,6 @@ my %actions = (
     },
 
 );
-
-remove_tree($tmpDirClient) if -d $tmpDirClient;
-make_path($tmpDirClient);
 
 my $target = FusionInventory::Agent::Target::Server->new(
     url        => "http://localhost:$port/",
