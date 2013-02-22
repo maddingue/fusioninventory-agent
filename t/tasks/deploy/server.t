@@ -28,8 +28,8 @@ if (!test_port($port)) {
     plan tests => 26;
 }
 
-my $tmpDirClient = File::Temp->newdir(CLEANUP => 1);
-my $tmpDirServer = File::Temp->newdir(CLEANUP => 1);
+my $tmpDirClient = File::Temp->newdir(CLEANUP => $ENV{TEST_DEBUG} ? 0 : 1);
+my $tmpDirServer = File::Temp->newdir(CLEANUP => $ENV{TEST_DEBUG} ? 0 : 1);
 
 my $last;
 my %files;
